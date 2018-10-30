@@ -335,21 +335,21 @@ async function saveReportRequest(result, reportType, seller) {
   console.log('----- COMPLETE REPORT -----');
 }
 
-let requestInventoryReportCronJob = new CronJob('00 16 * * * *', function () {
+let requestInventoryReportCronJob = new CronJob('00 01 01 * * *', function () {
   const date = new Date();
   requestReport('_GET_MERCHANT_LISTINGS_ALL_DATA_', date);
 }, null, true, 'America/Los_Angeles');
 
-let requestOrdersReportCronJob = new CronJob('05 16 * * * *', function () {
+let requestOrdersReportCronJob = new CronJob('00 15 01 * * * *', function () {
   const date = new Date();
   requestReport('_GET_FLAT_FILE_ORDERS_DATA_', date);
 }, null, true, 'America/Los_Angeles');
 
-let checkReportRequestCronJob = new CronJob('00 15 * * * *', function () {
+let checkReportRequestCronJob = new CronJob('00 */10 * * * *', function () {
   const date = new Date();
   checkRequestReport(date);
 }, null, true, 'America/Los_Angeles');
 
-//requestInventoryReportCronJob.start();
-//requestOrdersReportCronJob.start();
+requestInventoryReportCronJob.start();
+requestOrdersReportCronJob.start();
 checkReportRequestCronJob.start();
