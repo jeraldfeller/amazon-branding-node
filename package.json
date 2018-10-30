@@ -1,0 +1,22 @@
+{
+  "name": "advertisingapi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "amazon-mws": "0.0.23",
+    "cron": "^1.4.1",
+    "express": "^4.16.4",
+    "helmet": "^3.14.0",
+    "moment": "^2.22.1",
+    "mongoose": "^4.12.3",
+    "mysql": "^2.15.0",
+    "request": "^2.87.0",
+    "zlib": "^1.0.5"
+  }
+}

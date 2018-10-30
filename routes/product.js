@@ -1,0 +1,116 @@
+const express = require('express');
+const route = express.Router();
+const moment = require('moment');
+const {Product} = require('../model/products');
+const {Order} = require('../model/orders');
+route.post('/', async (req, res) => {
+  switch (req.body.action){
+    case 'productList':
+      let products = await Product.find({sellerId:req.body.profile.seller});
+      res.send(products);
+      break;
+    case 'summary':
+      let sku = req.body.data.sku;
+      let dateRange = req.body.data.dateRange;
+      let dateRangeObj = enumerateDaysBetweenDates(dateRange[0],dateRange[1]);
+      let chartDateRange = dateRangeObj.chartDateRange;
+      let chartDateObjData = dateRangeObj.dateObj;
+      let chartValueData = [];
+      console.log(dateRange);
+      let orders = await Order
+        .find({sku: sku})
+        .and([
+          {
+            paymentsDate: {
+              $gte: new Date(dateRange[0])
+            }
+          },
+          {
+            paymentsDate: {
+              $lte: new Date(dateRange[1])
+            }
+          }
+        ]);
+      let product = await Product
+        .find({sellerSku: sku});
+      let sales = 0;
+      let unitsSold = 0;
+      for(let x = 0; x < orders.length; x++){
+        chartDateObjData[getYmd(orders[x].paymentsDate)] = (chartDateObjData[getYmd(orders[x].paymentsDate)] + parseFloat(orders[x].itemPrice));
+        unitsSold = (unitsSold + parseInt(orders[x].quantityPurchased));
+        sales = (sales + parseFloat(orders[x].itemPrice));
+      }
+
+      for(let y in chartDateObjData){
+        chartValueData.push(chartDateObjData[y]);
+      }
+
+      console.log(chartDateRange);
+      let response = {
+        "SKU": sku,
+        "asin": product[0].asin1,
+        "Units_Ordered": unitsSold.toFixed(2),
+        "price": product[0].price,
+        "chart" : {
+          "dateRange": chartDateRange,
+          "value": chartValueData
+        },
+        "Fba_Fees": "5.09",
+        "Referral": "2.24",
+        "Pick_And_Pack": "",
+        "Costs": "2.80",
+        "Costs_plus": "3.08",
+        "Total_Advertising_Cost": "348.81",
+        "ACOS": "0%",
+        "Total_Storage": "$1,680.82",
+        "FBA_Fees_Price": "49%",
+        "Costs_Price": "21%",
+        "Revenue": "$105,307.80",
+        "Total_Profit": "$29,950.13",
+        "Profit_Margin": "28%",
+        "Profit_Per_Unit": "$4.25",
+        "Sessions": "16,087",
+        "Session_Percentage": "8.7%",
+        "Page Views": "21,137",
+        "Page_Views_Percentage": "8.9%",
+        "Buy_Box_Percentage": "100%",
+        "Unit_Session_Percentage": "43.8%",
+        "Ordered_Product_Sales": "$"+sales.toFixed(2),
+        "Total_Order_Items": "5,075"
+      }
+      res.send(response);
+      break;
+  }
+
+});
+
+function enumerateDaysBetweenDates(startDate, endDate){
+  var dates = {};
+  var chartDateRange = [];
+  var currDate = moment(startDate).startOf('day');
+  var lastDate = moment(endDate).startOf('day');
+
+  while(currDate.add(1, 'days').diff(lastDate) < 0) {
+    //console.log(currDate.clone().toDate());
+    let dateObj = currDate.clone().toDate();
+    let year = dateObj.getFullYear();
+    let month = dateObj.getMonth() + 1;
+    let day = dateObj.getDate();
+    let ymd = year+'-'+month+'-'+day;
+    console.log('C: ' + ymd);
+    dates[ymd] = 0;
+    chartDateRange.push(ymd);
+  }
+  return {dateObj:dates, chartDateRange: chartDateRange};
+}
+
+function getYmd(date){
+  let dateObj = date;
+  let year = dateObj.getFullYear();
+  let month = dateObj.getMonth() + 1;
+  let day = dateObj.getDate();
+  let ymd = year+'-'+month+'-'+day;
+//  console.log(ymd);
+  return ymd;
+}
+module.exports = route;
