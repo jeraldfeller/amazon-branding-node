@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const product = require('./routes/product');
 const sellers = require('./routes/sellers');
-
+const config = require('./config/index');
 const mongoose = require('mongoose');
 mongoose.connect('mongodb://localhost/amazon')
   .then(() => console.log('Connected to MongoDB'))

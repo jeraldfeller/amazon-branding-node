@@ -1,6 +1,7 @@
 const db = require('./db');
 
 module.exports = {
+    host_env: 'ec2-18-216-253-6.us-east-2.compute.amazonaws.com',
     token_url: 'https://api.amazon.com/auth/o2/token',
     us_ad_url: 'https://advertising-api.amazon.com',
     ad_url: 'https://advertising-api-eu.amazon.com',
