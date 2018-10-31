@@ -4,7 +4,7 @@ module.exports = {
     host_env: 'ec2-18-216-253-6.us-east-2.compute.amazonaws.com',
     token_url: 'https://api.amazon.com/auth/o2/token',
     us_ad_url: 'https://advertising-api.amazon.com',
-    ad_url: 'https://advertising-api-eu.amazon.com',
+    ad_url: 'https://advertising-api.amazon.com',
     access_token: '',
     metricsForAds: 'campaignId,campaignName,adGroupId,adGroupName,sku,currency,asin,impressions,clicks,cost,attributedConversions1d,attributedConversions7d,attributedConversions14d,attributedConversions30d,attributedConversions1dSameSKU,attributedConversions7dSameSKU,attributedConversions14dSameSKU,attributedConversions30dSameSKU,attributedUnitsOrdered1d,attributedUnitsOrdered7d,attributedUnitsOrdered14d,attributedUnitsOrdered30d,attributedSales1d,attributedSales7d,attributedSales14d,attributedSales30d,attributedSales1dSameSKU,attributedSales7dSameSKU,attributedSales14dSameSKU,attributedSales30dSameSKU',
     metricsForKeywords: 'campaignId,campaignName,keywordText,matchType,attributedConversions1d,attributedConversions1dSameSKU,impressions,clicks,cost,attributedConversions1d,attributedConversions7d,attributedConversions14d,attributedConversions30d,attributedConversions1dSameSKU,attributedConversions7dSameSKU,attributedConversions14dSameSKU,attributedConversions30dSameSKU,attributedUnitsOrdered1d,attributedUnitsOrdered7d,attributedUnitsOrdered14d,attributedUnitsOrdered30d,attributedSales1d,attributedSales7d,attributedSales14d,attributedSales30d,attributedSales1dSameSKU,attributedSales7dSameSKU,attributedSales14dSameSKU,attributedSales30dSameSKU',

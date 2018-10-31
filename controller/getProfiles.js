@@ -11,6 +11,7 @@ module.exports = (headers, id='') => {
             if (err) {
                 reject(err);
             }
+          
             resolve(body);
         });
     })

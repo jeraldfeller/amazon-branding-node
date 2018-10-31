@@ -1,12 +1,20 @@
 const moment = require('moment');
-const getProfiles = require('./controller/getProfiles');
-const createReport = require('./controller/createReport');
-const downloadReport = require('./controller/downloadReport');
-const saveReport = require('./controller/saveReport');
-const config = require('./config')
-const auth = require('./helpers/auth');
+const getProfiles = require('../controller/getProfiles');
+const createReport = require('../controller/createReport');
+const downloadReport = require('../controller/downloadReport');
+const saveReport = require('../controller/saveReport');
+const config = require('../config')
+const express = require('express');
+const mongoose = require('mongoose');
+const auth = require('../helpers/auth');
 const CronJob = require('cron').CronJob;
-const db = require('./helpers/database');
+
+const {AdvertisingReport} = require('../model/advertising_reports');
+
+
+mongoose.connect('mongodb://localhost/amazon')
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('Could not connect to MongoDb...', err));
 
 const getResult = function (query) {
   return new Promise((resolve, reject) => {
@@ -24,8 +32,7 @@ console.log('START');
 const makeReports = async (startDate, endDate = moment().format('YYYYMMDD')) => {
   const realDate = moment(startDate).subtract(1, 'days').format('YYYY-MM-DD');
   console.log(realDate);
-  let query = `SELECT * FROM advertising_reports.reports WHERE created_at LIKE '${realDate}%'`;
-  const result = await getResult(query);
+  const result = await AdvertisingReport.find({dateCreated: realDate});
   if (result.length > 0) {
     console.log("Already exists for that day");
     return true;
@@ -38,7 +45,9 @@ const makeReports = async (startDate, endDate = moment().format('YYYYMMDD')) => 
     console.log(data);
     const profiles = JSON.parse(data);
 
-    const recordTypes = ['productAds', 'keywords', 'campaigns'];
+    // for the meantime only productAds reports
+    const recordTypes = ['productAds'];
+    //const recordTypes = ['productAds', 'keywords', 'campaigns'];
     const campaignTypes = ['sponsoredProducts', 'headlineSearch'];
 
     for (let campaign = 0; campaign < campaignTypes.length; campaign++) {
@@ -76,18 +85,28 @@ const makeReports = async (startDate, endDate = moment().format('YYYYMMDD')) => 
         } else {
           reportParam.segment = 'query';
         }
-
-
-
         for (let i = 0; i < profiles.length; i++) {
+          let sellerId = profiles[i].accountInfo.sellerStringId
           headers['Amazon-Advertising-API-Scope'] = profiles[i].profileId;
           const res = await createReport(reportParam, recordType, headers);
           console.log(res);
           if (res) {
             if (typeof res === 'object' && res.reportId) {
-              let query = "INSERT INTO advertising_reports.reports (report_id, campaign_type,record_type, status, status_details, created_at) VALUES (";
-              query += "'" + res.reportId + "','" + campaignType + "','" + res.recordType + "','" + res.status + "','" + res.statusDetails + "','" + date + "')";
-              const result = await saveReportInfo(query);
+              let report = new AdvertisingReport({
+                sellerId: sellerId,
+                reportId: res.reportId,
+                campaignType: campaignType,
+                recordType: res.recordType,
+                status: res.status,
+                statusDetails: res.statusDetails,
+                dateCreated: realDate
+              });
+              try {
+                await report.save();
+                console.log(report);
+              } catch (err) {
+                console.log(err);
+              }
             }
           } else {
             console.log("Did not create report!");
@@ -97,19 +116,10 @@ const makeReports = async (startDate, endDate = moment().format('YYYYMMDD')) => 
 
       }
     }
-
   }
   console.log('----------------- COMPLETE ----------------');
 }
 
-function saveReportInfo(query) {
-  return new Promise((resolve) => {
-    db.query(query, (err, result) => {
-      if (err) throw err;
-      resolve(result)
-    })
-  })
-}
 
 function getHeaders(tokens) {
   return new Promise((resolve, reject) => {
@@ -123,52 +133,47 @@ function getHeaders(tokens) {
 }
 
 async function getReports(today) {
-  const realDate = moment(today).subtract(14, 'days').format('YYYY-MM-DD');
+  const realDate = moment(today).subtract(1, 'days').format('YYYY-MM-DD');
   console.log('Real Date: ' + realDate);
-
   const tokens = await auth();
   if (tokens && typeof tokens === 'object') {
     const headers = await getHeaders(tokens);
     const data = await getProfiles(headers);
     const profiles = JSON.parse(data);
-    const query = `SELECT * FROM advertising_reports.reports WHERE created_at LIKE '${realDate}%'`;
-    db.query(query, async (err, result) => {
-      if (err) {
-        throw new Error(err);
-      }
-
-      if (result.length == 0) {
-        console.log("No available reports!");
-      }
-
-      for (let i = 0; i < result.length; i++) {
-        const row = result[i];
-        if (row && row.report_id) {
-          for (let j = 0; j < profiles.length; j++) {
-            headers['Amazon-Advertising-API-Scope'] = profiles[j].profileId;
-            const reportInfo = await downloadReport(row.report_id, row.record_type, headers, profiles[j]);
-            if (reportInfo) {
-              await saveReport(null, reportInfo.data, reportInfo.info, row.campaign_type)
-            }
-
+    const result = await AdvertisingReport.find({dateCreated: realDate});
+    // const result = await AdvertisingReport.find({dateCreated: realDate}).and({status: {$ne: 'SUCCESS'}});
+    if (result.length == 0) {
+      console.log("No available reports!");
+    }
+    for (let i = 0; i < result.length; i++) {
+      const row = result[i];
+      if (row && row.reportId) {
+        for (let j = 0; j < profiles.length; j++) {
+          headers['Amazon-Advertising-API-Scope'] = profiles[j].profileId;
+          const reportInfo = await downloadReport(row.reportId, row.recordType, headers, profiles[j]);
+          if (reportInfo) {
+            await saveReport(null, reportInfo.data, reportInfo.info, row.campaignType)
           }
+
         }
       }
+    }
 
-    })
+
   }
 
   console.log('----------------- COMPLETE ----------------');
 
 }
-let generateReportCronJob = new CronJob('00 * * * * *', function () {
+let generateReportCronJob = new CronJob('00 04 * * * *', function () {
   const date = new Date();
   makeReports(date);
 }, null, true, 'Europe/Rome');
 
-let saveReportCronJob = new CronJob('02 00 03 * * *', function () {
+let saveReportCronJob = new CronJob('00 37 * * * *', function () {
   const date = new Date();
   getReports(date);
 }, null, true, 'Europe/Rome');
 
 generateReportCronJob.start();
+saveReportCronJob.start();

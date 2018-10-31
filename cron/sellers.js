@@ -9,6 +9,7 @@ mongoose.connect('mongodb://localhost/amazon')
   .catch(err => console.error('Could not connect to MongoDb...', err));
 
 
+
 const {Seller} = require('../model/sellers');
 const {Report} = require('../model/reports');
 const {Product} = require('../model/products');
@@ -58,6 +59,50 @@ const requestReport = async (reportType, startDate, endDate = moment().format('Y
       await saveReport(response.ReportRequestInfo, sellerObjId);
     });
   }
+
+};
+
+const listFinancialEvents = async () => {
+  console.log('Fetching Sellers');
+  const sellers = await getSellers();
+  for (let x = 0; x < sellers.length; x++) {
+    let sellerObjId = sellers[x]._id;
+    let sellerId = sellers[x].sellerId;
+    let MWSAuthToken = sellers[x].MWSAuthToken;
+    let AWSAccessKeyId = sellers[x].AWSAccessKeyId;
+    let SecretKey = sellers[x].SecretKey;
+    let MarketplaceId = sellers[x].MarketplaceId;
+    console.log('Fetching Orders');
+    const orders = await Order.find({feesIncluded: 0}).and({sellerId: sellerId});
+    for(let o = 0; o < orders.length; o++){
+      let orderId = orders[o].orderId;
+      var aws = require('amazon-mws')(AWSAccessKeyId, SecretKey);
+      aws.finances.search({
+        'Version': '2015-05-01',
+        'Action': 'ListFinancialEvents',
+        'SellerId': sellerId,
+        'MWSAuthToken': MWSAuthToken,
+        'AmazonOrderId': orderId
+      }, function (error, response) {
+        if (error) {
+          console.log('error ', error);
+          return;
+        }
+        //console.log(response);
+        let financialEvents = response.FinancialEvents;
+        console.log(financialEvents);
+        let shipmentItemList = financialEvents.ShipmentEventList.ShipmentEvent.ShipmentItemList;
+        let ItemFeeList = shipmentItemList.ShipmentItem.ItemFeeList;
+        console.log(shipmentItemList);
+        console.log(ItemFeeList);
+        for(let f = 0; f < ItemFeeList['FeeComponent'].length; f++){
+          console.log(ItemFeeList['FeeComponent'][f]);
+        }
+      });
+    }
+  }
+
+  console.log('----------------- COMPLETE ----------------');
 
 };
 
@@ -340,16 +385,22 @@ let requestInventoryReportCronJob = new CronJob('00 01 01 * * *', function () {
   requestReport('_GET_MERCHANT_LISTINGS_ALL_DATA_', date);
 }, null, true, 'America/Los_Angeles');
 
-let requestOrdersReportCronJob = new CronJob('00 15 01 * * * *', function () {
+let requestOrdersReportCronJob = new CronJob('00 22 * * * *', function () {
   const date = new Date();
   requestReport('_GET_FLAT_FILE_ORDERS_DATA_', date);
 }, null, true, 'America/Los_Angeles');
 
-let checkReportRequestCronJob = new CronJob('00 */10 * * * *', function () {
+let checkReportRequestCronJob = new CronJob('00 */10  * * * *', function () {
   const date = new Date();
   checkRequestReport(date);
+}, null, true, 'America/Los_Angeles');
+
+let listFinancialEventsCronJob = new CronJob('00 10  * * * *', function () {
+  listFinancialEvents();
 }, null, true, 'America/Los_Angeles');
 
 requestInventoryReportCronJob.start();
 requestOrdersReportCronJob.start();
 checkReportRequestCronJob.start();
+listFinancialEventsCronJob.start();
+

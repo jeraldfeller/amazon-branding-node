@@ -91,6 +91,10 @@ const Order = mongoose.model('Order', new mongoose.Schema(
     deliveryInstructions: {
       type: String
     },
+    feesIncluded: {
+      type: Boolean,
+      default: false
+    }
   }
   )
 );
