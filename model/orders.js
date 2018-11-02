@@ -98,10 +98,6 @@ const Order = mongoose.model('Order', new mongoose.Schema(
     fbaStorageFee:{
       type: Number,
       default: 0
-    },
-    referral: {
-      type: Number,
-      default: 0
     }
   }
   )

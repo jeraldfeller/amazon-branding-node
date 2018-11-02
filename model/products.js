@@ -47,7 +47,7 @@ const Product = mongoose.model('Product', new mongoose.Schema(
       type: String,
     },
     zshopBrowsePath: {
-    type: String,
+      type: String,
     },
     zshopStorefrontFeature: {
       type: String,
@@ -94,6 +94,14 @@ const Product = mongoose.model('Product', new mongoose.Schema(
       default: 0
     },
     costsPlus: {
+      type: Number,
+      default: 0
+    },
+    fbaFees: {
+      type: Number,
+      default: 0
+    },
+    referral: {
       type: Number,
       default: 0
     },

@@ -57,12 +57,14 @@ route.post('/', async (req, res) => {
         .find({sellerSku: sku});
       let sales = 0;
       let unitsSold = 0;
-      let referral = 0;
+      let referral = product[0].referral;
+      let fbaFee = product[0].fbaFees;
+      let fbaStorageFee = 0;
       for (let x = 0; x < orders.length; x++) {
         chartDateObjData[getYmd(orders[x].paymentsDate)] = (chartDateObjData[getYmd(orders[x].paymentsDate)] + parseFloat(orders[x].itemPrice));
         unitsSold = (unitsSold + parseInt(orders[x].quantityPurchased));
         sales = (sales + parseFloat(orders[x].itemPrice));
-        referral = (referral + parseFloat(orders[x].referral * -1));
+        fbaStorageFee = (parseFloat(orders[x].fbaStorageFee) + fbaStorageFee);
       }
 
       for (let y in chartDateObjData) {
@@ -93,7 +95,7 @@ route.post('/', async (req, res) => {
       let clickTruRate = 0;
       let roas = 0;
 
-      let fbaFee = (product[0].fbaStorageFee ? product[0].fbaStorageFee : 0);
+
 
       let totalStorageFee = 0;
       for(let c = 0; c < cpa.length; c++){
@@ -103,6 +105,7 @@ route.post('/', async (req, res) => {
         clicks = (parseInt(cpa[c].clicks) + clicks);
         cost = (parseFloat(cpa[c].cost) + cost);
         adCostTotal = (parseFloat(cpa[c].cost) + adCostTotal);
+
       }
 
       for (let y in chartImpressionsDateObjData) {
@@ -155,8 +158,8 @@ route.post('/', async (req, res) => {
         "Costs_plus": product[0].costsPlus.toFixed(2),
         "Total_Advertising_Cost": adCostTotal,
         "ACOS": acos+"%",
-        "Total_Storage": fbaFee,
-        "FBA_Fees_Price": fbaFeesPrice,
+        "Total_Storage": fbaStorageFee.toFixed(2),
+        "FBA_Fees_Price": fbaFeesPrice.toFixed(2),
         "Costs_Price": costPlusPrice.toFixed(2),
         "Revenue": revenue.toFixed(2),
         "Total_Profit": totalProfit.toFixed(2),
