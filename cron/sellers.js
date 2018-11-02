@@ -49,6 +49,15 @@ const requestReport = async (reportType, startDate, endDate = moment().format('Y
           'EndDate': new Date(startDate),
         };
         break;
+      case '_GET_FBA_ESTIMATED_FBA_FEES_TXT_DATA_':
+        var requestBody = {
+          'Version': '2009-01-01',
+          'Action': 'RequestReport',
+          'SellerId': sellerId,
+          'MWSAuthToken': MWSAuthToken,
+          'ReportType': reportType
+        };
+        break;
     }
     aws.reports.search(requestBody, async function (error, response) {
       if (error) {
@@ -186,6 +195,7 @@ const checkRequestReport = async (startDate) => {
 
   }
 };
+
 
 async function getReports() {
   console.log('Fetching report requests');
@@ -391,6 +401,20 @@ async function saveReportRequest(result, reportType, seller) {
         }
       }
       break;
+    case '_GET_FBA_ESTIMATED_FBA_FEES_TXT_DATA_':
+      for (let x = 0; x < data.length; x++) {
+        let sku = data[x]['sku'];
+        let fbaFees = data[x]['expected-fulfillment-fee-per-unit'];
+        let referalFees = data[x]['estimated-referral-fee-per-unit'];
+
+        let product = await Product.find({sellerSku: sku});
+        if(product.length > 0){
+          product[0].fbaFees = fbaFees;
+          product[0].referral = referalFees;
+          product[0].save();
+        }
+      }
+      break;
   }
   console.log('----- COMPLETE REPORT -----');
 }
@@ -400,9 +424,14 @@ let requestInventoryReportCronJob = new CronJob('00 01 01 * * *', function () {
   requestReport('_GET_MERCHANT_LISTINGS_ALL_DATA_', date);
 }, null, true, 'America/Los_Angeles');
 
-let requestOrdersReportCronJob = new CronJob('00 22 * * * *', function () {
+let requestOrdersReportCronJob = new CronJob('00 10 01 * * *', function () {
   const date = new Date();
   requestReport('_GET_FLAT_FILE_ORDERS_DATA_', date);
+}, null, true, 'America/Los_Angeles');
+
+let requestFbaFeesReportCronJob = new CronJob('00 20 01 * * *', function () {
+  const date = new Date();
+  requestReport('_GET_FBA_ESTIMATED_FBA_FEES_TXT_DATA_', date);
 }, null, true, 'America/Los_Angeles');
 
 let checkReportRequestCronJob = new CronJob('00 */10  * * * *', function () {
@@ -414,8 +443,10 @@ let listFinancialEventsCronJob = new CronJob('00 */10  * * * *', function () {
   listFinancialEvents();
 }, null, true, 'America/Los_Angeles');
 
-requestInventoryReportCronJob.start();
-requestOrdersReportCronJob.start();
+
+// requestInventoryReportCronJob.start();
+// requestOrdersReportCronJob.start();
+requestFbaFeesReportCronJob.start();
 checkReportRequestCronJob.start();
-listFinancialEventsCronJob.start();
+// listFinancialEventsCronJob.start();
 
