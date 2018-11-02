@@ -6,6 +6,20 @@ const {Order} = require('../model/orders');
 const {CampaignsProductAds} = require('../model/campaigns_product_ads');
 route.post('/', async (req, res) => {
   switch (req.body.action) {
+    case 'updateCost':
+      const prod = await Product.find({sellerId: req.body.profile.seller, sellerSku: req.body.data.sku})
+      if(prod.length > 0){
+        if(req.body.data.action == 'cost'){
+          prod[0].costs = req.body.data.cost;
+        }else if(req.body.data.action == 'costPlus'){
+          prod[0].costsPlus = req.body.data.costsPlus;
+        }
+        prod[0].save();
+        res.send(prod[0]);
+      }else{
+        res.send(false);
+      }
+      break;
     case 'productList':
       console.log(req.body.profile);
       let products = await Product.find({sellerId: req.body.profile.seller});
@@ -43,10 +57,12 @@ route.post('/', async (req, res) => {
         .find({sellerSku: sku});
       let sales = 0;
       let unitsSold = 0;
+      let referral = 0;
       for (let x = 0; x < orders.length; x++) {
         chartDateObjData[getYmd(orders[x].paymentsDate)] = (chartDateObjData[getYmd(orders[x].paymentsDate)] + parseFloat(orders[x].itemPrice));
         unitsSold = (unitsSold + parseInt(orders[x].quantityPurchased));
         sales = (sales + parseFloat(orders[x].itemPrice));
+        referral = (referral + parseFloat(orders[x].referral * -1));
       }
 
       for (let y in chartDateObjData) {
@@ -76,6 +92,10 @@ route.post('/', async (req, res) => {
       let costPerClick = 0;
       let clickTruRate = 0;
       let roas = 0;
+
+      let fbaFee = (product[0].fbaStorageFee ? product[0].fbaStorageFee : 0);
+
+      let totalStorageFee = 0;
       for(let c = 0; c < cpa.length; c++){
         chartClicksDateObjData[getYmd(cpa[c].date)] = (chartClicksDateObjData[getYmd(cpa[c].date)] + parseFloat(cpa[c].clicks));
         chartImpressionsDateObjData[getYmd(cpa[c].date)] = (chartImpressionsDateObjData[getYmd(cpa[c].date)] + parseFloat(cpa[c].impressions));
@@ -99,6 +119,16 @@ route.post('/', async (req, res) => {
 
       roas = sales / adCostTotal;
 
+      let revenue = product[0].price * unitsSold;
+      let totalProfit = revenue - (fbaFee + referral + product[0].costsPlus) * unitsSold - totalStorageFee - adCostTotal;
+      let profitPerUnit = (unitsSold != 0 ? totalProfit/unitsSold : 0);
+      let profitMargin = (revenue != 0 ? totalProfit/revenue : 0);
+
+      let fbaFeesPrice = fbaFee/product[0].price;
+      let costPlusPrice = product[0].costsPlus/product[0].price;
+
+
+
       let response = {
         "SKU": sku,
         "asin": product[0].asin1,
@@ -118,20 +148,20 @@ route.post('/', async (req, res) => {
             "value": chartClicksValueData
           }
         },
-        "Fba_Fees": "5.09",
-        "Referral": "2.24",
+        "Fba_Fees": fbaFee,
+        "Referral": referral,
         "Pick_And_Pack": "",
-        "Costs": "2.80",
-        "Costs_plus": "3.08",
+        "Costs": product[0].costs.toFixed(2),
+        "Costs_plus": product[0].costsPlus.toFixed(2),
         "Total_Advertising_Cost": adCostTotal,
         "ACOS": acos+"%",
-        "Total_Storage": "$,680.82",
-        "FBA_Fees_Price": "49",
-        "Costs_Price": "21%",
-        "Revenue": "105,307.80",
-        "Total_Profit": "29,950.13",
-        "Profit_Margin": "28",
-        "Profit_Per_Unit": "4.25",
+        "Total_Storage": fbaFee,
+        "FBA_Fees_Price": fbaFeesPrice,
+        "Costs_Price": costPlusPrice.toFixed(2),
+        "Revenue": revenue.toFixed(2),
+        "Total_Profit": totalProfit.toFixed(2),
+        "Profit_Margin": profitMargin.toFixed(2),
+        "Profit_Per_Unit": profitPerUnit.toFixed(2),
         "Sessions": "16,087",
         "Session_Percentage": "8.7",
         "Page Views": "21,137",
@@ -145,7 +175,7 @@ route.post('/', async (req, res) => {
         "ROAS": roas,
         "Spend": cost.toFixed(2),
         "Click_Thru_Rate": clickTruRate.toFixed(2),
-        "Cost_Per_Click": costPerClick.toFixed(2)
+        "Cost_Per_Click": costPerClick.toFixed(2),
       }
       res.send(response);
       break;
@@ -165,7 +195,6 @@ function enumerateDaysBetweenDates(startDate, endDate) {
     let month = dateObj.getMonth() + 1;
     let day = dateObj.getDate();
     let ymd = year + '-' + month + '-' + day;
-    console.log('C: ' + ymd);
     dates[ymd] = 0;
     chartDateRange.push(ymd);
   }

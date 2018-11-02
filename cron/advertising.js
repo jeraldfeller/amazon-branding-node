@@ -16,16 +16,6 @@ mongoose.connect('mongodb://localhost/amazon')
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('Could not connect to MongoDb...', err));
 
-const getResult = function (query) {
-  return new Promise((resolve, reject) => {
-    db.query(query, (err, result) => {
-      if (err) {
-        reject(err);
-      }
-      resolve(result);
-    })
-  })
-}
 
 console.log('START');
 
@@ -132,16 +122,16 @@ function getHeaders(tokens) {
   })
 }
 
-async function getReports(today) {
-  const realDate = moment(today).subtract(1, 'days').format('YYYY-MM-DD');
+async function getReports(today, x) {
+  const realDate = moment(today).subtract(x, 'days').format('YYYY-MM-DD');
   console.log('Real Date: ' + realDate);
   const tokens = await auth();
   if (tokens && typeof tokens === 'object') {
     const headers = await getHeaders(tokens);
     const data = await getProfiles(headers);
     const profiles = JSON.parse(data);
-    const result = await AdvertisingReport.find({dateCreated: realDate});
-    // const result = await AdvertisingReport.find({dateCreated: realDate}).and({status: {$ne: 'SUCCESS'}});
+    //const result = await AdvertisingReport.find({dateCreated: realDate});
+    const result = await AdvertisingReport.find({dateCreated: realDate}).and({status: {$ne: 'SUCCESS'}});
     if (result.length == 0) {
       console.log("No available reports!");
     }
@@ -165,15 +155,17 @@ async function getReports(today) {
   console.log('----------------- COMPLETE ----------------');
 
 }
-let generateReportCronJob = new CronJob('00 04 * * * *', function () {
+let generateReportCronJob = new CronJob  ('00 04 01 * * *', function () {
   const date = new Date();
   makeReports(date);
 }, null, true, 'Europe/Rome');
 
-let saveReportCronJob = new CronJob('00 37 * * * *', function () {
+let saveReportCronJob = new CronJob('00 01 02 * * *', function () {
   const date = new Date();
-  getReports(date);
+  getReports(date, 1);
 }, null, true, 'Europe/Rome');
 
 generateReportCronJob.start();
 saveReportCronJob.start();
+
+console.log('Running...');

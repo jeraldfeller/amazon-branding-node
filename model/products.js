@@ -89,6 +89,14 @@ const Product = mongoose.model('Product', new mongoose.Schema(
     merchantShippingGroup: {
       type: String,
     },
+    costs: {
+      type: Number,
+      default: 0
+    },
+    costsPlus: {
+      type: Number,
+      default: 0
+    },
     status: {
       type: String,
     }

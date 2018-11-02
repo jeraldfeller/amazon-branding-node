@@ -73,7 +73,7 @@ const listFinancialEvents = async () => {
     let SecretKey = sellers[x].SecretKey;
     let MarketplaceId = sellers[x].MarketplaceId;
     console.log('Fetching Orders');
-    const orders = await Order.find({feesIncluded: 0}).and({sellerId: sellerId});
+    const orders = await Order.find({feesIncluded: false}).and({sellerId: sellerId});
     for(let o = 0; o < orders.length; o++){
       let orderId = orders[o].orderId;
       var aws = require('amazon-mws')(AWSAccessKeyId, SecretKey);
@@ -83,20 +83,35 @@ const listFinancialEvents = async () => {
         'SellerId': sellerId,
         'MWSAuthToken': MWSAuthToken,
         'AmazonOrderId': orderId
-      }, function (error, response) {
+      }, async function (error, response) {
         if (error) {
           console.log('error ', error);
           return;
         }
         //console.log(response);
         let financialEvents = response.FinancialEvents;
-        console.log(financialEvents);
+        //console.log(financialEvents);
         let shipmentItemList = financialEvents.ShipmentEventList.ShipmentEvent.ShipmentItemList;
         let ItemFeeList = shipmentItemList.ShipmentItem.ItemFeeList;
-        console.log(shipmentItemList);
-        console.log(ItemFeeList);
+        // console.log(shipmentItemList);
+        // console.log(ItemFeeList);
+        let order = await Order.find({orderId: orderId});
         for(let f = 0; f < ItemFeeList['FeeComponent'].length; f++){
-          console.log(ItemFeeList['FeeComponent'][f]);
+          if(ItemFeeList['FeeComponent'][f].FeeType == 'Commission'){
+            if(order.length > 0){
+              order[0].referral = ItemFeeList['FeeComponent'][f].FeeAmount.CurrencyAmount;
+            }
+          }
+          if(ItemFeeList['FeeComponent'][f].FeeType == 'FBAStorageFee'){
+              // add FBA storage fee to orders
+              if(order.length > 0){
+                order[0].fbaStorageFee = ItemFeeList['FeeComponent'][f].FeeAmount.CurrencyAmount;
+              }
+          }
+        }
+        if(order.length > 0){
+          order[0].feesIncluded = true;
+          order[0].save();
         }
       });
     }
@@ -395,7 +410,7 @@ let checkReportRequestCronJob = new CronJob('00 */10  * * * *', function () {
   checkRequestReport(date);
 }, null, true, 'America/Los_Angeles');
 
-let listFinancialEventsCronJob = new CronJob('00 10  * * * *', function () {
+let listFinancialEventsCronJob = new CronJob('00 */10  * * * *', function () {
   listFinancialEvents();
 }, null, true, 'America/Los_Angeles');
 
