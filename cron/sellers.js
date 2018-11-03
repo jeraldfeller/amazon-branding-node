@@ -444,9 +444,9 @@ let listFinancialEventsCronJob = new CronJob('00 */10  * * * *', function () {
 }, null, true, 'America/Los_Angeles');
 
 
-// requestInventoryReportCronJob.start();
-// requestOrdersReportCronJob.start();
+requestInventoryReportCronJob.start();
+requestOrdersReportCronJob.start();
 requestFbaFeesReportCronJob.start();
 checkReportRequestCronJob.start();
-// listFinancialEventsCronJob.start();
+listFinancialEventsCronJob.start();
 

@@ -12,7 +12,7 @@ route.post('/', async (req, res) => {
         if(req.body.data.action == 'cost'){
           prod[0].costs = req.body.data.cost;
         }else if(req.body.data.action == 'costPlus'){
-          prod[0].costsPlus = req.body.data.costsPlus;
+          prod[0].costsPlus = req.body.data.cost;
         }
         prod[0].save();
         res.send(prod[0]);
