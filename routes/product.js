@@ -120,31 +120,34 @@ route.post('/', async (req, res) => {
       let chartProductsOrderedDateObjData = enumerateDaysBetweenDates(dateRange[0], dateRange[1]).dateObj;
       let chartProductsOrderedValueData = [];
 
-      let orders = await Order
-        .aggregate([
-            {
-              $match: {
-                $or: skusObj
-              }
-            },
-            {
-              $match: {
-                $and: [
-                  {
-                    paymentsDate: {
-                      $gte: new Date(dateRange[0])
+      let orders = [];
+      if(skus.length > 0){
+        orders = await Order
+          .aggregate([
+              {
+                $match: {
+                  $or: skusObj
+                }
+              },
+              {
+                $match: {
+                  $and: [
+                    {
+                      paymentsDate: {
+                        $gte: new Date(dateRange[0])
+                      }
+                    },
+                    {
+                      paymentsDate: {
+                        $lte: new Date(dateRange[1])
+                      }
                     }
-                  },
-                  {
-                    paymentsDate: {
-                      $lte: new Date(dateRange[1])
-                    }
-                  }
-                ]
+                  ]
+                }
               }
-            }
-          ]
-        );
+            ]
+          );
+      }
 
 
       // products
@@ -194,31 +197,35 @@ route.post('/', async (req, res) => {
 
       // get Ad Spent
       let adCostTotal = 0;
-      let cpa = await CampaignsProductAds
-        .aggregate([
-            {
-              $match: {
-                $or: skusObj
-              }
-            },
-            {
-              $match: {
-                $and: [
-                  {
-                    date: {
-                      $gte: new Date(dateRange[0])
+      let cpa = [];
+      if(skus.length > 0){
+        cpa = await CampaignsProductAds
+          .aggregate([
+              {
+                $match: {
+                  $or: skusObj
+                }
+              },
+              {
+                $match: {
+                  $and: [
+                    {
+                      date: {
+                        $gte: new Date(dateRange[0])
+                      }
+                    },
+                    {
+                      date: {
+                        $lte: new Date(dateRange[1])
+                      }
                     }
-                  },
-                  {
-                    date: {
-                      $lte: new Date(dateRange[1])
-                    }
-                  }
-                ]
+                  ]
+                }
               }
-            }
-          ]
-        );
+            ]
+          );
+      }
+
 
       let impressions = 0;
       let clicks = 0;
@@ -264,31 +271,35 @@ route.post('/', async (req, res) => {
 
       // sales
 
-      const salesReport = await SalesReport
-        .aggregate([
-            {
-              $match: {
-                $or: skusObj
-              }
-            },
-            {
-              $match: {
-                $and: [
-                  {
-                    dateImported: {
-                      $gte: new Date(dateRange[0])
+      let salesReport = [];
+      if(skus.length > 0){
+        salesReport = await SalesReport
+          .aggregate([
+              {
+                $match: {
+                  $or: skusObj
+                }
+              },
+              {
+                $match: {
+                  $and: [
+                    {
+                      dateImported: {
+                        $gte: new Date(dateRange[0])
+                      }
+                    },
+                    {
+                      dateImported: {
+                        $lte: new Date(dateRange[1])
+                      }
                     }
-                  },
-                  {
-                    dateImported: {
-                      $lte: new Date(dateRange[1])
-                    }
-                  }
-                ]
+                  ]
+                }
               }
-            }
-          ]
-        );
+            ]
+          );
+      }
+
 
       let sessions = 0;
       let sessionPercentage = 0;
@@ -371,71 +382,84 @@ route.post('/', async (req, res) => {
         var asin = 'Multiple Selected';
         var isMultiple = true;
       } else {
-        var sku = product[0].sellerSku
-        var asin = product[0].asin1
-        var isMultiple = false;
+        if (skus.length == 0) {
+          var sku = '';
+          var asin = '';
+          var isMultiple = false;
+        }else{
+          var sku = product[0].sellerSku
+          var asin = product[0].asin1
+          var isMultiple = false;
+        }
+
       }
-      const response = {
-        "SKU": sku,
-        "asin": asin,
-        "Units_Ordered": unitsSold,
-        "Units_Ordered_Sales": unitsOrdered,
-        "price": price,
-        "chart": {
-          "dateRange": chartDateRange,
-          "value": chartValueData
-        },
-        "adsChart": {
-          "impressions": {
+
+      if(skus.length > 0){
+        var response = {
+          "SKU": sku,
+          "asin": asin,
+          "Units_Ordered": unitsSold,
+          "Units_Ordered_Sales": unitsOrdered,
+          "price": price,
+          "chart": {
             "dateRange": chartDateRange,
-            "value": chartImpressionsValueData
+            "value": chartValueData
           },
-          "clicks": {
-            "dateRange": chartDateRange,
-            "value": chartClicksValueData
-          }
-        },
-        "salesChart": {
-          "unitsOrdered": {
-            "dateRange": chartDateRange,
-            "value": chartUnitsOrderedValueData
+          "adsChart": {
+            "impressions": {
+              "dateRange": chartDateRange,
+              "value": chartImpressionsValueData
+            },
+            "clicks": {
+              "dateRange": chartDateRange,
+              "value": chartClicksValueData
+            }
           },
-          "productsOrdered": {
-            "dateRange": chartDateRange,
-            "value": chartProductsOrderedValueData
-          }
-        },
-        "Fba_Fees": fbaFee,
-        "Referral": referral,
-        "Pick_And_Pack": "",
-        "Costs": costs.toFixed(2),
-        "Costs_plus": costsPlus.toFixed(2),
-        "Total_Advertising_Cost": adCostTotal.toFixed(2),
-        "ACOS": acos.toFixed(2) + "%",
-        "Total_Storage": fbaStorageFee.toFixed(2),
-        "FBA_Fees_Price": fbaFeesPrice.toFixed(2),
-        "Costs_Price": costPlusPrice.toFixed(2),
-        "Revenue": revenue.toFixed(2),
-        "Total_Profit": totalProfit.toFixed(2),
-        "Profit_Margin": profitMargin.toFixed(2),
-        "Profit_Per_Unit": profitPerUnit.toFixed(2),
-        "Sessions": sessions,
-        "Session_Percentage": sessionPercentage.toFixed(2),
-        "Page_Views": pageViews,
-        "Page_Views_Percentage": pageViewsPercentage,
-        "Buy_Box_Percentage": buyBoxPercentage,
-        "Unit_Session_Percentage": unitSessionPercentage,
-        "Ordered_Product_Sales": sales.toFixed(2),
-        "Ordered_Product_Sales_Report": orderedProductSales.toFixed(2),
-        "Total_Order_Items": totalOrderItems,
-        "Impressions": impressions,
-        "Clicks": clicks,
-        "ROAS": roas.toFixed(2),
-        "Spend": cost.toFixed(2),
-        "Click_Thru_Rate": clickTruRate.toFixed(2),
-        "Cost_Per_Click": costPerClick.toFixed(2),
-        "isMultiple": isMultiple
-      };
+          "salesChart": {
+            "unitsOrdered": {
+              "dateRange": chartDateRange,
+              "value": chartUnitsOrderedValueData
+            },
+            "productsOrdered": {
+              "dateRange": chartDateRange,
+              "value": chartProductsOrderedValueData
+            }
+          },
+          "Fba_Fees": fbaFee.toFixed(2),
+          "Referral": referral.toFixed(2),
+          "Pick_And_Pack": "",
+          "Costs": costs.toFixed(2),
+          "Costs_plus": costsPlus.toFixed(2),
+          "Total_Advertising_Cost": adCostTotal.toFixed(2),
+          "ACOS": acos.toFixed(2) + "%",
+          "Total_Storage": fbaStorageFee.toFixed(2),
+          "FBA_Fees_Price": fbaFeesPrice.toFixed(2),
+          "Costs_Price": costPlusPrice.toFixed(2),
+          "Revenue": revenue.toFixed(2),
+          "Total_Profit": totalProfit.toFixed(2),
+          "Profit_Margin": profitMargin.toFixed(2),
+          "Profit_Per_Unit": profitPerUnit.toFixed(2),
+          "Sessions": sessions,
+          "Session_Percentage": sessionPercentage.toFixed(2),
+          "Page_Views": pageViews,
+          "Page_Views_Percentage": pageViewsPercentage,
+          "Buy_Box_Percentage": buyBoxPercentage,
+          "Unit_Session_Percentage": unitSessionPercentage,
+          "Ordered_Product_Sales": sales.toFixed(2),
+          "Ordered_Product_Sales_Report": orderedProductSales.toFixed(2),
+          "Total_Order_Items": totalOrderItems,
+          "Impressions": impressions,
+          "Clicks": clicks,
+          "ROAS": roas.toFixed(2),
+          "Spend": cost.toFixed(2),
+          "Click_Thru_Rate": clickTruRate.toFixed(2),
+          "Cost_Per_Click": costPerClick.toFixed(2),
+          "isMultiple": isMultiple
+        };
+
+      }else{
+        var response = [];
+      }
 
 
       res.send(response);
