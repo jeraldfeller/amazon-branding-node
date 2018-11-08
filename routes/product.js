@@ -7,6 +7,28 @@ const {CampaignsProductAds} = require('../model/campaigns_product_ads');
 const {SalesReport} = require('../model/sales-report');
 route.post('/', async (req, res) => {
   switch (req.body.action) {
+    case 'importCosts':
+      var importData = req.body.data.data;
+      for (let x = 1; x < importData.length; x++) {
+        if(typeof importData[x][1] != 'undefined'){
+          let sku = importData[x][0].trim();
+          let costs = importData[x][1].trim();
+          let costsPlus = importData[x][2].trim();
+          if(sku != ''){
+            const product = await Product.find({sellerSku: sku});
+            if(product.length > 0){
+              product[0].costs = costs;
+              product[0].costsPlus = costsPlus;
+              product[0].save();
+
+              console.log(product[0]);
+            }
+          }
+        }
+      }
+
+      res.send(true);
+      break;
     case 'importSales':
       const data = req.body.data.data;
       const dateNow = req.body.data.date;
